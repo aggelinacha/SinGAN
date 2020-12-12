@@ -27,7 +27,7 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     count = 0
 
     for G,Z_opt,noise_amp,real in zip(Gs,Zs,NoiseAmp,reals):
-        pad_image = int(((opt.ker_size - 1) * opt.num_layer) / 2)
+        pad_image = 0  #int(((opt.ker_size - 1) * opt.num_layer) / 2)
         nzx = Z_opt.shape[2]
         nzy = Z_opt.shape[3]
         #pad_noise = 0
@@ -60,7 +60,7 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
                 I_prev = in_s
             else:
                 I_prev = images_prev[i]
-                I_prev = imresize(I_prev, 1 / opt.scale_factor, opt)
+                I_prev = imresize(I_prev, 2, opt)  #1 / opt.scale_factor, opt)
                 I_prev = I_prev[:, :, 0:real.shape[2], 0:real.shape[3]]
                 #I_prev = functions.upsampling(I_prev,reals[count].shape[2],reals[count].shape[3])
                 I_prev = m_image(I_prev)
@@ -68,7 +68,7 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
                 z_curr = Z_opt
 
             z_in = noise_amp*z_curr+I_prev
-            I_curr = G(z_in.detach(),I_prev)
+            I_curr = G(torch.cat((z_in.detach(),I_prev), dim=1))
 
             if (count == len(Gs)-1):
                 I_curr = functions.denorm(I_curr).detach()
@@ -86,13 +86,13 @@ def generate_gif(Gs,Zs,reals,NoiseAmp,opt,alpha=0.1,beta=0.9,start_scale=2,fps=1
     imageio.mimsave('%s/start_scale=%d/alpha=%f_beta=%f.gif' % (dir2save,start_scale,alpha,beta),images_cur,fps=fps)
     del images_cur
 
-def SinGAN_generate(Gs,Zs,reals,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=50):
+def SinGAN_generate(Gs,Zs,reals,labels,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,gen_start_scale=0,num_samples=50):
     #if torch.is_tensor(in_s) == False:
     if in_s is None:
         in_s = torch.full(reals[0].shape, 0, device=opt.device)
     images_cur = []
-    for G,Z_opt,noise_amp in zip(Gs,Zs,NoiseAmp):
-        pad1 = ((opt.ker_size-1)*opt.num_layer)/2
+    for G,Z_opt,noise_amp,label in zip(Gs,Zs,NoiseAmp,labels):
+        pad1 = 0  #((opt.ker_size-1)*opt.num_layer)/2
         m = nn.ZeroPad2d(int(pad1))
         nzx = (Z_opt.shape[2]-pad1*2)*scale_v
         nzy = (Z_opt.shape[3]-pad1*2)*scale_h
@@ -116,7 +116,7 @@ def SinGAN_generate(Gs,Zs,reals,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,g
                 #I_prev = functions.upsampling(I_prev,z_curr.shape[2],z_curr.shape[3])
             else:
                 I_prev = images_prev[i]
-                I_prev = imresize(I_prev,1/opt.scale_factor, opt)
+                I_prev = imresize(I_prev,2,opt)  #1/opt.scale_factor, opt)
                 if opt.mode != "SR":
                     I_prev = I_prev[:, :, 0:round(scale_v * reals[n].shape[2]), 0:round(scale_h * reals[n].shape[3])]
                     I_prev = m(I_prev)
@@ -128,10 +128,15 @@ def SinGAN_generate(Gs,Zs,reals,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,g
             if n < gen_start_scale:
                 z_curr = Z_opt
 
-            z_in = noise_amp*(z_curr)+I_prev
-            I_curr = G(z_in.detach(),I_prev)
+            # z_in = noise_amp*(z_curr)+I_prev
+            z_in = label
+            print(I_prev.shape, z_in.shape)
+            try:
+                I_curr = G(torch.cat((z_in.detach(),I_prev), dim=1))
+            except:
+                import pdb; pdb.set_trace()
 
-            if n == len(reals)-1:
+            if n == len(reals)-2:
                 if opt.mode == 'train':
                     dir2save = '%s/RandomSamples/%s/gen_start_scale=%d' % (opt.out, opt.input_name[:-4], gen_start_scale)
                 else:
@@ -146,5 +151,6 @@ def SinGAN_generate(Gs,Zs,reals,NoiseAmp,opt,in_s=None,scale_v=1,scale_h=1,n=0,g
                     #plt.imsave('%s/in_s.png' % (dir2save), functions.convert_image_np(in_s), vmin=0,vmax=1)
             images_cur.append(I_curr)
         n+=1
+        print(n, len(reals))
     return I_curr.detach()
 

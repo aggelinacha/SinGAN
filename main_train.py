@@ -7,7 +7,9 @@ import SinGAN.functions as functions
 if __name__ == '__main__':
     parser = get_arguments()
     parser.add_argument('--input_dir', help='input image dir', default='Input/Images')
+    parser.add_argument('--label_dir', help='input label dir', default='Input/Images')
     parser.add_argument('--input_name', help='input image name', required=True)
+    parser.add_argument('--input_label', help='input label name', required=True)
     parser.add_argument('--mode', help='task to be done', default='train')
     opt = parser.parse_args()
     opt = functions.post_config(opt)

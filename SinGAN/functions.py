@@ -14,7 +14,7 @@ import os
 import random
 from sklearn.cluster import KMeans
 
-
+torch.cuda.set_device(3)
 # custom weights initialization called on netG and netD
 
 def read_image(opt):
@@ -74,7 +74,7 @@ def convert_image_np_2d(inp):
     # inp = std*
     return inp
 
-def generate_noise(size,num_samp=1,device='cuda',type='gaussian', scale=1):
+def generate_noise(size,num_samp=1,device='cuda:3',type='gaussian', scale=1):
     if type == 'gaussian':
         noise = torch.randn(num_samp, size[0], round(size[1]/scale), round(size[2]/scale), device=device)
         noise = upsampling(noise,size[1], size[2])
@@ -117,7 +117,7 @@ def reset_grads(model,require_grad):
 
 def move_to_gpu(t):
     if (torch.cuda.is_available()):
-        t = t.to(torch.device('cuda'))
+        t = t.to(torch.device('cuda:3'))
     return t
 
 def move_to_cpu(t):
@@ -148,6 +148,12 @@ def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
 
 def read_image(opt):
     x = img.imread('%s/%s' % (opt.input_dir,opt.input_name))
+    x = np2torch(x,opt)
+    x = x[:,0:3,:,:]
+    return x
+
+def read_label(opt):
+    x = img.imread('%s/%s' % (opt.label_dir,opt.input_label))
     x = np2torch(x,opt)
     x = x[:,0:3,:,:]
     return x
@@ -220,8 +226,9 @@ def adjust_scales2image_SR(real_,opt):
 
 def creat_reals_pyramid(real,reals,opt):
     real = real[:,0:3,:,:]
-    for i in range(0,opt.stop_scale+1,1):
-        scale = math.pow(opt.scale_factor,opt.stop_scale-i)
+    for i in [2, 4, 8]: #range(0,opt.stop_scale+1,1):
+        #scale = math.pow(opt.scale_factor,opt.stop_scale-i)
+        scale = i/8
         curr_real = imresize(real,scale,opt)
         reals.append(curr_real)
     return reals
@@ -281,7 +288,7 @@ def generate_dir2save(opt):
 
 def post_config(opt):
     # init fixed parameters
-    opt.device = torch.device("cpu" if opt.not_cuda else "cuda:0")
+    opt.device = torch.device("cpu" if opt.not_cuda else "cuda:3")
     opt.niter_init = opt.niter
     opt.noise_amp_init = opt.noise_amp
     opt.nfc_init = opt.nfc
