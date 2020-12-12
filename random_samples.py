@@ -1,7 +1,7 @@
 from config import get_arguments
 from SinGAN.manipulate import *
 from SinGAN.training import *
-from SinGAN.imresize import imresize
+from SinGAN.imresize import imresize, imresize_to_shape
 import SinGAN.functions as functions
 
 
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             real = imresize(real_,opt.scale1,opt)
             reals = functions.creat_reals_pyramid(real,[],opt)
             label_ = functions.read_label(opt)
-            label = imresize(label_,opt.scale1,opt)
+            label = imresize_to_shape(label_, real.shape[2:], opt)
             labels = functions.creat_reals_pyramid(label,[],opt)
             # functions.adjust_scales2image(real, opt)
             Gs, Zs, reals, NoiseAmp = functions.load_trained_pyramid(opt)
